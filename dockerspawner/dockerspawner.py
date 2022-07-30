@@ -1229,8 +1229,25 @@ class DockerSpawner(Spawner):
         will be restarted.
         """
 
+        uri = self.handler.request.uri
+        image_from_uri = False
+
+        import urllib.parse as url_parse
+
+        nice_url = url_parse.unquote(uri)
+        next_url = nice_url[nice_url.find('next=') + 5:]
+        idx = next_url.find('?') + 1
+
+        if idx > 0:
+            query_params = next_url[idx:] 
+            query_params = url_parse.parse_qs(query_params)
+            image = query_params.get("image",[None])[0]
+            image_from_uri = image is not None
+
         if image:
-            self.log.warning("Specifying image via .start args is deprecated")
+            if not image_from_uri:
+                self.log.warning("Specifying image via .start args is deprecated")
+
             self.image = image
         if extra_create_kwargs:
             self.log.warning(
@@ -1244,12 +1261,14 @@ class DockerSpawner(Spawner):
             self.extra_host_config.update(extra_host_config)
 
         # image priority:
-        # 1. user options (from spawn options form)
-        # 2. self.image from config
-        image_option = self.user_options.get('image')
-        if image_option:
-            # save choice in self.image
-            self.image = await self.check_allowed(image_option)
+        # 1. image from uri
+        # 2. user options (from spawn options form)
+        # 3. self.image from config
+        if not image_from_uri:
+           image_option = self.user_options.get('image')
+           if image_option:
+               # save choice in self.image
+               self.image = await self.check_allowed(image_option)
 
         image = self.image
         await self.pull_image(image)
