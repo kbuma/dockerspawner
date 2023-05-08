@@ -1266,9 +1266,12 @@ class DockerSpawner(Spawner):
         # 3. self.image from config
         if not image_from_uri:
            image_option = self.user_options.get('image')
-           if image_option:
-               # save choice in self.image
-               self.image = await self.check_allowed(image_option)
+        else:
+           image_option = image
+        
+        if image_option:
+           # save choice in self.image
+           self.image = await self.check_allowed(image_option)
 
         image = self.image
         await self.pull_image(image)
